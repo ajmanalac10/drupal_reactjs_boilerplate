@@ -1,0 +1,39 @@
+name: frontend
+type: nodejs:10
+disk: 512
+size: S
+
+dependencies:
+  nodejs:
+    yarn: "*"
+    pm2: "^2.5.0"
+
+web:
+
+  commands:
+    start: "PM2_HOME=$PLATFORM_APP_DIR/run NODE_ENV=production pm2 start server.js --no-daemon"
+
+  locations:
+    "/":
+      passthru: true
+
+    "/static":
+      passthru: false
+      root: "static"
+      allow: false
+      # Rules for specific URI patterns.
+      rules:
+        # Allow access to common static files.
+        '\.(jpe?g|png|gif|svgz?|css|txt|js|map|ico|bmp|eot|woff2?|otf|mp3|ttf)$':
+          allow: true
+
+hooks:
+  build: |
+    yarn --production install
+    yarn run build
+  deploy: |
+    echo "== DEPLOY SUCCESSFULLY COMPLETED $(date +"%d.%m.%Y %T") =="
+
+mounts:
+  # Make whole build folder writable for build scripts purposes.
+  '/run': 'shared:files/run'

@@ -1,0 +1,90 @@
+version: '3'
+services:
+
+  node:
+    image: wodby/node:$NODE_TAG
+    container_name: "${PROJECT_NAME}_node"
+    working_dir: /app
+    environment:
+      BACKEND_URL: ${BACKEND_URL}
+      DEBUG: ${NODE_DEBUG}
+    labels:
+      - 'traefik.backend=node'
+      - 'traefik.port=3000'
+      - 'traefik.frontend.rule=Host:${FRONTEND_HOST}, ${TESTS_FRONTEND_HOST}'
+    expose:
+      - "3000"
+    command: yarn start:dev
+
+  mariadb:
+    image: wodby/mariadb:$MARIADB_TAG
+    container_name: "${PROJECT_NAME}_mariadb"
+    stop_grace_period: 30s
+    environment:
+      MYSQL_ROOT_PASSWORD: $DB_ROOT_PASSWORD
+      MYSQL_DATABASE: $DB_NAME
+      MYSQL_USER: $DB_USER
+      MYSQL_PASSWORD: $DB_PASSWORD
+
+  php:
+    image: wodby/drupal-php:$PHP_TAG
+    container_name: "${PROJECT_NAME}_php"
+    environment:
+      PHP_SENDMAIL_PATH: /usr/sbin/sendmail -t -i -S mailhog:1025
+      DB_HOST: $DB_HOST
+      DB_USER: $DB_USER
+      DB_PASSWORD: $DB_PASSWORD
+      DB_NAME: $DB_NAME
+      DB_DRIVER: $DB_DRIVER
+
+  nginx:
+    image: wodby/nginx:$NGINX_TAG
+    container_name: "${PROJECT_NAME}_nginx"
+    depends_on:
+      - php
+    environment:
+      NGINX_STATIC_OPEN_FILE_CACHE: "off"
+      NGINX_ERROR_LOG_LEVEL: debug
+      NGINX_BACKEND_HOST: php
+      NGINX_SERVER_ROOT: /var/www/html/web
+      NGINX_VHOST_PRESET: drupal8
+    labels:
+      - 'traefik.backend=nginx'
+      - 'traefik.port=80'
+      - 'traefik.frontend.rule=Host:${BACKEND_HOST}, ${TESTS_BACKEND_HOST}'
+
+  traefik:
+    image: traefik:1.7.16
+    container_name: "${PROJECT_NAME}_traefik"
+    command: -c /dev/null --web --docker --logLevel=INFO
+    ports:
+      - '80:80'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      default:
+        aliases:
+          - $FRONTEND_HOST
+          - $BACKEND_HOST
+          - $TESTS_FRONTEND_HOST
+          - $TESTS_BACKEND_HOST
+
+  codecept:
+    image: systemseed/codeception:2.4.5-1.0-drupal
+    container_name: "${PROJECT_NAME}_codecept"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      BACKEND_URL: ${TESTS_BACKEND_URL}
+      FRONTEND_URL: ${TESTS_FRONTEND_URL}
+      TEST_USERS_PASSWORD: ${TEST_USERS_PASSWORD}
+      DEVELOPMENT_MODULES: ${DEVELOPMENT_MODULES}
+
+  chrome:
+    image: selenium/standalone-chrome:3.14.0-arsenic
+    container_name: "${PROJECT_NAME}_chrome"
+    expose:
+      - 4444
+    shm_size: 2gb

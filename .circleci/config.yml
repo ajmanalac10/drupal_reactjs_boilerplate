@@ -1,0 +1,51 @@
+version: 2
+
+jobs:
+  build_and_test:
+
+    machine:
+      enabled: true
+      image: circleci/classic:201808-01
+
+    steps:
+      - checkout
+
+      - run:
+          name: Fix CircleCI files permissions
+          command: |
+            sudo chown ubuntu:ubuntu -R *
+            sudo chown ubuntu:ubuntu -R .[!.]*
+
+      - run:
+          name: Download Docker images
+          command: make pull
+
+      - run:
+          name: Install the whole application locally
+          command: make install
+
+      - run:
+          name: Check Drupal & React.js code for compliance with coding standards
+          command: make code:check
+
+      - run:
+          name: Run Unit (integration) tests
+          command: make tests:run unit
+
+      - run:
+          name: Run API tests
+          command: make tests:run api
+
+      - run:
+          name: Run Acceptance tests
+          command: make tests:run acceptance
+
+      - store_artifacts:
+          path: tests/_output
+
+workflows:
+  version: 2
+
+  build_and_test:
+    jobs:
+      - build_and_test
