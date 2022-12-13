@@ -6,7 +6,7 @@
     "@zeit/next-sass": "^1.0.1",
     "compression": "^1.7.3",
     "dotenv": "^8.1.0",
-    "express": "^4.16.3",
+    "express": "^4.17.3",
     "express-basic-auth": "^1.1.5",
     "next": "^9.0.5",
     "next-redux-saga": "^4.0.2",
